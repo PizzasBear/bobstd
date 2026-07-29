@@ -308,15 +308,19 @@ def toolchain(
 def add_include_path(
     path: RuleInput.Type, extend_cflags=True, extend_asflags=True
 ) -> Scope:
-    flags = [f"-I{RuleInput.resolve(path, path_only=True)}"]
+    flags: list[RuleInput.Type] = [f"-I{RuleInput.resolve(path, path_only=True)}"]
 
     scopes: list[Scope] = []
     if extend_cflags:
-        scopes.append(cflags.add(flags))  # ty:ignore[invalid-argument-type]
+        scopes.append(cflags.add(flags))
     if extend_asflags:
-        scopes.append(asflags.add(flags))  # ty:ignore[invalid-argument-type]
+        scopes.append(asflags.add(flags))
 
     return ScopeList(scopes)
+
+
+def add_bundles(*bundles: Bundle) -> Scope:
+    return default_bundles.add(list(bundles))
 
 
 p.close()
@@ -345,6 +349,6 @@ __all__ = [
     "static_library_bundle",
     "toolchain",
     "add_include_path",
+    "add_bundles",
     "objects",
-    "default_bundles",
 ]
