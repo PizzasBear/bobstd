@@ -7,41 +7,41 @@ from bob.prelude import *
 
 p = plugin_scope()
 
-cc = Rule(
+default_cc = Rule(
     "$ccbin -MMD -MT $out -MF $out.d $cflags -c $in -o $out",
     description="CC",
     depfile="$out.d",
     deps="gcc",
     compile_command="$ccbin -MMD -MT $out -MF $out.d $cflags -c $in -o $out",
 )
-scoped_cc = ScopedRule(cc)
-asm = Rule(
+cc = ScopedRule(default_cc)
+default_asm = Rule(
     "$asbin -MMD -MT $out -MF $out.d $asflags -c $in -o $out",
     description="AS",
     depfile="$out.d",
     deps="gcc",
     compile_command="$asbin -MMD -MT $out -MF $out.d $asflags -c $in -o $out",
 )
-scoped_asm = ScopedRule(asm)
-ld = Rule(
+asm = ScopedRule(default_asm)
+default_ld = Rule(
     "$ldbin $cflags $ldflags -o $out $in $ldlibs",
     description="LD",
 )
-scoped_ld = ScopedRule(ld)
-ar = Rule(
+ld = ScopedRule(default_ld)
+default_ar = Rule(
     "rm -f $out && $arbin crs $out $in",
     description="AR",
 )
-scoped_ar = ScopedRule(ar)
+ar = ScopedRule(default_ar)
 
-ccbin = scoped_cc["ccbin"]
-asbin = scoped_asm["asbin"]
-ldbin = scoped_ld["ldbin"]
-arbin = scoped_ar["arbin"]
+ccbin = cc["ccbin"]
+asbin = asm["asbin"]
+ldbin = ld["ldbin"]
+arbin = ar["arbin"]
 
-cflags = Variable("cflags", scoped_cc, scoped_ld)
-asflags = scoped_asm["asflags"]
-ldflags = scoped_ld["ldflags"]
+cflags = Variable("cflags", cc, ld)
+asflags = asm["asflags"]
+ldflags = ld["ldflags"]
 
 cflags.set(["-fdiagnostics-color=always"])
 asflags.set([])
@@ -115,7 +115,7 @@ def object(
     ):
         order_only = (order_only or []) + bundle_order_only
         if source_path.suffix == ".c":
-            result = scoped_cc.build(
+            result = cc.build(
                 name,
                 inputs=[source],
                 implicit=implicit,
@@ -123,7 +123,7 @@ def object(
                 implicit_outputs=implicit_outputs,
             )
         elif source_path.suffix == ".S" or source_path.suffix == ".s":
-            result = scoped_asm.build(
+            result = asm.build(
                 name,
                 inputs=[source],
                 implicit=implicit,
@@ -192,9 +192,9 @@ def binary(
             implicit=implicit,
             order_only=order_only,
         ) as (inputs, bundle_ldlibs),
-        scoped_ld["ldlibs"].set(ldlibs + bundle_ldlibs),
+        ld["ldlibs"].set(ldlibs + bundle_ldlibs),
     ):
-        return scoped_ld.build(
+        return ld.build(
             name,
             inputs=inputs,
             implicit=bundle_ldlibs,
@@ -221,9 +221,7 @@ def static_library(
         implicit=implicit,
         order_only=order_only,
     ) as (inputs, bundle_ldlibs):
-        return scoped_ar.build(
-            name + ".a", inputs=inputs, implicit_outputs=implicit_outputs
-        )
+        return ar.build(name + ".a", inputs=inputs, implicit_outputs=implicit_outputs)
 
 
 def static_library_bundle(
@@ -333,10 +331,10 @@ __all__ = [
     "asbin",
     "ldbin",
     "arbin",
-    "scoped_cc",
-    "scoped_asm",
-    "scoped_ld",
-    "scoped_ar",
+    "default_cc",
+    "default_asm",
+    "default_ld",
+    "default_ar",
     "cflags",
     "asflags",
     "ldflags",
