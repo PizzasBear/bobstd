@@ -1,6 +1,6 @@
 [project]
 name = "bobstd"
-version = "0.2.0"
+version = "0.2.1"
 description = "Unopinionated plugins for building common things with Bob."
 readme = "README.md"
 authors = [{ name = "Noam Zaks", email = "noam@noamzaks.com" }]
