@@ -260,7 +260,7 @@ def static_library_bundle(
             implicit_outputs=implicit_outputs,
         )
 
-    ldlibs: list[RuleInput.Type] = [library.path] + [
+    ldlibs: list[RuleInput.Type] = [library] + [
         ldlib
         for bundle in (bundles or []) + default_bundles.get(required=True)
         for ldlib in bundle.ldlibs
