@@ -1,7 +1,6 @@
-from contextlib import contextmanager
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Callable, Generator
+from typing import Callable
 
 from bob.prelude import *
 
@@ -42,10 +41,20 @@ arbin = ar["arbin"]
 cflags = Variable("cflags", cc, ld)
 asflags = asm["asflags"]
 ldflags = ld["ldflags"]
+ldlibs = ld["ldlibs"]
 
 cflags.set(["-fdiagnostics-color=always"])
 asflags.set([])
 ldflags.set([])
+ldlibs.set([])
+
+_ccbinvar = ccbin
+_asbinvar = asbin
+_ldbinvar = ldbin
+_arbinvar = arbin
+_ldlibsvar = ldlibs
+
+_bundle_objects: ScopedValue[list[RuleInput.Type]] = ScopedValue([])
 
 
 @dataclass
@@ -69,20 +78,24 @@ class Bundle:
             ldflags=self.ldflags + other.ldflags,
         )
 
-    @contextmanager
-    def _scope(
+    def scope(
         self,
-    ) -> Generator[
-        tuple[list[RuleInput.Type], list[RuleInput.Type], list[RuleInput.Type]],
-        None,
-        None,
-    ]:
-        with (
-            cflags.add(self.cflags),  # ty:ignore[invalid-argument-type]
-            asflags.add(self.asflags),  # ty:ignore[invalid-argument-type]
-            ldflags.add(self.ldflags),  # ty:ignore[invalid-argument-type]
-        ):
-            yield self.objects, self.ldlibs, self.order_only
+    ) -> Scope:
+        """Return a scope where the bundle is used."""
+
+        return (
+            cflags.add([*self.cflags])
+            | asflags.add([*self.asflags])
+            | ldflags.add([*self.ldflags])
+            | ldlibs.add(self.ldlibs)
+            | asm.get(required=True).order_only.add(self.order_only)
+            | cc.get(required=True).order_only.add(self.order_only)
+            | _bundle_objects.add(self.objects)
+        )
+
+    @staticmethod
+    def sum(bundles: list["Bundle"] | None) -> "Bundle":
+        return sum((bundles or []) + default_bundles.get(required=True), Bundle())
 
 
 default_bundles = ScopedValue[list[Bundle]]([])
@@ -106,14 +119,7 @@ def object(
 
     name = name_transform(Path(RuleInput.id(source_path)).with_suffix(".o"))
 
-    with sum(
-        (bundles or []) + default_bundles.get(required=True), Bundle()
-    )._scope() as (
-        bundle_objects,
-        bundle_ldlibs,
-        bundle_order_only,
-    ):
-        order_only = (order_only or []) + bundle_order_only
+    with Bundle.sum(bundles).scope():
         if source_path.suffix == ".c":
             result = cc.build(
                 name,
@@ -137,35 +143,28 @@ def object(
     return result
 
 
-@contextmanager
-def _expand(
+def _inputs_with_sources(
     name: str,
     sources: list[RuleInput.Type],
     inputs: None | list[RuleInput.Type] = None,
     bundles: None | list[Bundle] = None,
     implicit: None | list[RuleInput.Type] = None,
     order_only: None | list[RuleInput.Type] = None,
-) -> Generator[tuple[list[RuleInput.Type], list[RuleInput.Type]], None, None]:
-    if inputs is None:
-        inputs = []
-
-    total_bundles = sum((bundles or []) + default_bundles.get(required=True), Bundle())
-
-    yield (
-        [
-            object(
-                source,
-                implicit=implicit,
-                order_only=order_only,
-                bundles=[total_bundles],
-                name_transform=lambda p: Path("obj") / name / p,
-            )
-            for source in sources
-        ]
-        + inputs
-        or [] + total_bundles.objects,
-        total_bundles.ldlibs,
-    )
+) -> list[RuleInput.Type]:
+    with Bundle.sum(bundles).scope():
+        return (
+            [
+                object(
+                    source,
+                    implicit=implicit,
+                    order_only=order_only,
+                    name_transform=lambda p: Path("obj") / name / p,
+                )
+                for source in sources
+            ]
+            + (inputs or [])
+            + _bundle_objects.get(required=True)
+        )
 
 
 def binary(
@@ -180,24 +179,29 @@ def binary(
 ) -> FileTarget:
     """Build a binary from the given C sources and additional inputs."""
 
-    if ldlibs is None:
-        ldlibs = []
-
     with (
-        _expand(
-            name=name,
-            sources=sources,
-            inputs=inputs,
-            bundles=bundles,
-            implicit=implicit,
-            order_only=order_only,
-        ) as (inputs, bundle_ldlibs),
-        ld["ldlibs"].set(ldlibs + bundle_ldlibs),
+        Bundle.sum(bundles).scope(),
+        _ldlibsvar.add([*ldlibs] if ldlibs is not None else []),
     ):
+        ldlibs_value = _ldlibsvar.get()
+        assert (
+            not isinstance(ldlibs_value, str)
+            and not isinstance(ldlibs_value, Path)
+            and not isinstance(ldlibs_value, FileTarget)
+            and not isinstance(ldlibs_value, PhonyTarget)
+        )
+
         return ld.build(
             name,
-            inputs=inputs,
-            implicit=bundle_ldlibs,
+            inputs=_inputs_with_sources(
+                name=name,
+                sources=sources,
+                inputs=inputs,
+                bundles=bundles,
+                implicit=implicit,
+                order_only=order_only,
+            ),
+            implicit=ldlibs_value,
             implicit_outputs=implicit_outputs,
         )
 
@@ -213,15 +217,19 @@ def static_library(
 ) -> FileTarget:
     """Build a static archive from the given C sources and additional inputs."""
 
-    with _expand(
-        name=name,
-        sources=sources,
-        inputs=inputs,
-        bundles=bundles,
-        implicit=implicit,
-        order_only=order_only,
-    ) as (inputs, bundle_ldlibs):
-        return ar.build(name + ".a", inputs=inputs, implicit_outputs=implicit_outputs)
+    with Bundle.sum(bundles).scope():
+        return ar.build(
+            name + ".a",
+            inputs=_inputs_with_sources(
+                name=name,
+                sources=sources,
+                inputs=inputs,
+                bundles=bundles,
+                implicit=implicit,
+                order_only=order_only,
+            ),
+            implicit_outputs=implicit_outputs,
+        )
 
 
 def static_library_bundle(
@@ -246,9 +254,9 @@ def static_library_bundle(
         public_ldflags = []
 
     with (
-        cflags.add(public_cflags),  # ty:ignore[invalid-argument-type]
-        asflags.add(public_asflags),  # ty:ignore[invalid-argument-type]
-        ldflags.add(public_ldflags),  # ty:ignore[invalid-argument-type]
+        cflags.add([*public_cflags]),
+        asflags.add([*public_asflags]),
+        ldflags.add([*public_ldflags]),
     ):
         library = static_library(
             name=name,
@@ -260,24 +268,15 @@ def static_library_bundle(
             implicit_outputs=implicit_outputs,
         )
 
-    ldlibs: list[RuleInput.Type] = [library] + [
-        ldlib
-        for bundle in (bundles or []) + default_bundles.get(required=True)
-        for ldlib in bundle.ldlibs
-    ]
-
-    return Bundle(
-        ldlibs=ldlibs,
-        cflags=public_cflags,
-        asflags=public_asflags,
-        ldflags=public_ldflags,
+    return sum(
+        bundles or [],
+        Bundle(
+            ldlibs=[library],
+            cflags=public_cflags,
+            asflags=public_asflags,
+            ldflags=public_ldflags,
+        ),
     )
-
-
-ccbinvar = ccbin
-asbinvar = asbin
-ldbinvar = ldbin
-arbinvar = arbin
 
 
 def toolchain(
@@ -298,10 +297,10 @@ def toolchain(
         ldbin = ccbin
 
     return (
-        ccbinvar.set(ccbin)
-        | asbinvar.set(asbin)
-        | ldbinvar.set(ldbin)
-        | arbinvar.set(arbin)
+        _ccbinvar.set(ccbin)
+        | _asbinvar.set(asbin)
+        | _ldbinvar.set(ldbin)
+        | _arbinvar.set(arbin)
     )
 
 
@@ -342,6 +341,7 @@ __all__ = [
     "cflags",
     "asflags",
     "ldflags",
+    "ldlibs",
     "Bundle",
     "object",
     "binary",

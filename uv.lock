@@ -4,15 +4,15 @@ requires-python = ">=3.12"
 
 [[package]]
 name = "bob-build"
-version = "0.1.0"
+version = "0.1.7"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "ninja" },
     { name = "rich-click" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/b2/bb/5178ed18fceb1ed854790f580776a26b622a9785fbbc217f9658b279dcbc/bob_build-0.1.0.tar.gz", hash = "sha256:fac5d3d3636195fd5b57b8591142183c138f59095b7d2dea8aa70532ace0c4d7", size = 16678, upload-time = "2026-06-28T22:36:20.238Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/fb/7d/2fbc826e3338869d1ef2d935d39fa9f4067efe4b97223100d3a3c3c0eaf5/bob_build-0.1.7.tar.gz", hash = "sha256:a71462be09a58fdeea938b141186ec15cdbd1f8429b6a106796406975c2493c1", size = 19517, upload-time = "2026-08-03T16:07:34.727Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/d3/86/06928085699063b8cb1a0ed19b8243c0614c67240279b426c7c28bd43536/bob_build-0.1.0-py3-none-any.whl", hash = "sha256:57099d6052975adaaead25eeb66442ff8892e6bc25e3756173baec89d0e3018c", size = 24723, upload-time = "2026-06-28T22:36:19.381Z" },
+    { url = "https://files.pythonhosted.org/packages/47/47/ec467a15b38c1b1fcca10e8964e929c6926a95d8779a10227996566f0680/bob_build-0.1.7-py3-none-any.whl", hash = "sha256:2dec2b5f3ea0b6730191ff887115be31895d0e1e1e4f1249bf0956d277163076", size = 28403, upload-time = "2026-08-03T16:07:33.716Z" },
 ]
 
 [[package]]
@@ -33,7 +33,7 @@ dev = [
 ]
 
 [package.metadata]
-requires-dist = [{ name = "bob-build", specifier = "~=0.1.0" }]
+requires-dist = [{ name = "bob-build", specifier = "~=0.1.7" }]
 
 [package.metadata.requires-dev]
 dev = [
