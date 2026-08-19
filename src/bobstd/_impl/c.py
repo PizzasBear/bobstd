@@ -179,6 +179,15 @@ def binary(
 ) -> FileTarget:
     """Build a binary from the given C sources and additional inputs."""
 
+    inputs = _inputs_with_sources(
+        name=name,
+        sources=sources,
+        inputs=inputs,
+        bundles=bundles,
+        implicit=implicit,
+        order_only=order_only,
+    )
+
     with (
         Bundle.sum(bundles).scope(),
         _ldlibsvar.add([*ldlibs] if ldlibs is not None else []),
@@ -193,14 +202,7 @@ def binary(
 
         return ld.build(
             name,
-            inputs=_inputs_with_sources(
-                name=name,
-                sources=sources,
-                inputs=inputs,
-                bundles=bundles,
-                implicit=implicit,
-                order_only=order_only,
-            ),
+            inputs=inputs,
             implicit=ldlibs_value,
             implicit_outputs=implicit_outputs,
         )
@@ -217,17 +219,19 @@ def static_library(
 ) -> FileTarget:
     """Build a static archive from the given C sources and additional inputs."""
 
+    inputs = _inputs_with_sources(
+        name=name,
+        sources=sources,
+        inputs=inputs,
+        bundles=bundles,
+        implicit=implicit,
+        order_only=order_only,
+    )
+
     with Bundle.sum(bundles).scope():
         return ar.build(
             name + ".a",
-            inputs=_inputs_with_sources(
-                name=name,
-                sources=sources,
-                inputs=inputs,
-                bundles=bundles,
-                implicit=implicit,
-                order_only=order_only,
-            ),
+            inputs=inputs,
             implicit_outputs=implicit_outputs,
         )
 
