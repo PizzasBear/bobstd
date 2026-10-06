@@ -28,7 +28,7 @@ default_ld = Rule(
 )
 ld = ScopedRule(default_ld)
 default_ar = Rule(
-    "rm -f $out && $arbin crs $out $in",
+    "rm -f $out && $arbin $arflags $out $in",
     description="AR",
 )
 ar = ScopedRule(default_ar)
@@ -41,11 +41,13 @@ arbin = ar["arbin"]
 cflags = Variable("cflags", cc, ld)
 asflags = asm["asflags"]
 ldflags = ld["ldflags"]
+arflags = ar["arflags"]
 ldlibs = ld["ldlibs"]
 
 cflags.set(["-fdiagnostics-color=always"])
 asflags.set([])
 ldflags.set([])
+arflags.set(["crs"])
 ldlibs.set([])
 
 _ccbinvar = ccbin
@@ -345,6 +347,7 @@ __all__ = [
     "cflags",
     "asflags",
     "ldflags",
+    "arflags",
     "ldlibs",
     "Bundle",
     "object",
