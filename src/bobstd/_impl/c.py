@@ -119,7 +119,7 @@ def object(
 
     source_path = RuleInput.resolve(source, path_only=True, single=True)
 
-    name = name_transform(Path(RuleInput.id(source_path)).with_suffix(".o"))
+    name = name_transform(Path(RuleInput.id(source_path) + ".o"))
 
     with Bundle.sum(bundles).scope():
         if source_path.suffix == ".c":
