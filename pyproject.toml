@@ -3,16 +3,13 @@ name = "bobstd"
 version = "0.2.5"
 description = "Unopinionated plugins for building common things with Bob."
 readme = "README.md"
-authors = [{ name = "Noam Zaks", email = "noam@noamzaks.com" }]
 requires-python = ">=3.10"
+authors = [{ name = "Noam Zaks", email = "noam@noamzaks.com" }]
 dependencies = ["bob-build~=0.1.8"]
-
-[build-system]
-requires = ["uv_build>=0.11.7,<0.12.0"]
-build-backend = "uv_build"
 
 [dependency-groups]
 dev = [
+    "mypy>=2.1.0",
     "pre-commit>=4.6.0",
     "pytest>=9.1.1",
     "pytest-xdist>=3.8.0",
@@ -20,5 +17,28 @@ dev = [
     "ty>=0.0.51",
 ]
 
+[build-system]
+requires = ["uv_build>=0.11.7,<0.12.0"]
+build-backend = "uv_build"
+
+[tool.mypy]
+strict = true
+packages = ["bobstd", "tests"]
+
+[tool.pyright]
+typeCheckingMode = "strict"
+venv = ".venv"
+venvPath = "."
+pythonVersion = "3.10"
+reportWildcardImportFromLibrary = false
+
+[[tool.pyright.executionEnvironments]]
+root = "tests"
+extraPaths = [".", "src"]
+
+[[tool.pyright.executionEnvironments]]
+root = "."
+
 [tool.ruff.lint]
 ignore = ["F403", "F405"]
+extend-select = ["I"]

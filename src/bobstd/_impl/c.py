@@ -70,7 +70,7 @@ class Bundle:
     asflags: list[str] = field(default_factory=list)
     ldflags: list[str] = field(default_factory=list)
 
-    def __add__(self, other: "Bundle"):
+    def __add__(self, other: "Bundle") -> "Bundle":
         return Bundle(
             objects=self.objects + other.objects,
             order_only=self.order_only + other.order_only,
@@ -286,10 +286,10 @@ def static_library_bundle(
 
 
 def toolchain(
-    ccbin: RuleInput.Type,
-    arbin: RuleInput.Type,
-    asbin: None | RuleInput.Type = None,
-    ldbin: None | RuleInput.Type = None,
+    ccbin: RuleInput.Multiple,
+    arbin: RuleInput.Multiple,
+    asbin: None | RuleInput.Multiple = None,
+    ldbin: None | RuleInput.Multiple = None,
 ) -> Scope:
     """
     Return a scope using the given C toolchain.
@@ -311,7 +311,7 @@ def toolchain(
 
 
 def add_include_path(
-    path: RuleInput.Type, extend_cflags=True, extend_asflags=True
+    path: RuleInput.Type, extend_cflags: bool = True, extend_asflags: bool = True
 ) -> Scope:
     flags: list[RuleInput.Type] = [f"-I{RuleInput.resolve(path, path_only=True)}"]
 
